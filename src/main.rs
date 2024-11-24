@@ -5,11 +5,11 @@ pub mod state;
 
 use std::env;
 
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, Result};
+use actix_web::{get, web, App, HttpResponse, HttpServer, Result};
 use chrono::{DateTime, FixedOffset};
 use dotenv::dotenv;
 use errors::AppError;
-use models::traffic_measurements::{TrafficMeasurement, VehicleClass};
+use models::{traffic_measurement::TrafficMeasurement, traffic_vehicle_measurement::VehicleClass};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
 use state::AppState;

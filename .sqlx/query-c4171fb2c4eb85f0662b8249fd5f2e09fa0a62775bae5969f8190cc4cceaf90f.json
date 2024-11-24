@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\t\t\tINSERT INTO public.locations (\n\t\t\t\t\tlocation_id,\n\t\t\t\t\tlatitude,\n\t\t\t\t\tlongitude\n\t\t\t\t)\n\t\t\t\tVALUES ($1, $2, $3)\n\t\t\t\tON CONFLICT (location_id)\n\t\t\t\tDO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Float8",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c4171fb2c4eb85f0662b8249fd5f2e09fa0a62775bae5969f8190cc4cceaf90f"
+}

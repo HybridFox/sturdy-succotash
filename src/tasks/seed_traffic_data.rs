@@ -5,7 +5,7 @@ use futures::StreamExt;
 use quick_xml::de::from_str;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 
-use crate::{errors::AppError, models::traffic_measurements::TrafficMeasurement, TrafficData, TrafficDataLocations};
+use crate::{errors::AppError, models::{location::Location, traffic_measurement::TrafficMeasurement, traffic_vehicle_measurement::TrafficVehicleMeasurement}, TrafficData, TrafficDataLocations};
 
 pub async fn seed_traffic_data() -> std::result::Result<(), AppError> {
     let pool = PgPoolOptions::new()
@@ -26,42 +26,56 @@ pub async fn seed_traffic_data() -> std::result::Result<(), AppError> {
     let traffic_data: TrafficData = from_str(&traffic_data_xml)?;
     let location_data: TrafficDataLocations = from_str(&location_data_xml)?;
 
-	let measurements = traffic_data.measuring_points
-		.iter()
-		.map(|point| {
-			let location = location_data.locations.iter().find(|location| location.unique_id == point.unique_id);
+	futures::stream::iter(location_data.locations)
+		.for_each(|location| {
+		let value = pool.clone();
+		async move {
+			let location_to_insert = Location {
+				latitude: location.latitude,
+				longitude: location.longitude,
+				location_id: location.unique_id
+			};
 
-			match location {
-				None => vec![],
-				Some(found_location) => point.measurement_data
-					.iter()
-					.map(|measurement| {
-						TrafficMeasurement {
-							location_id: point.unique_id,
-							latitude: found_location.latitude,
-							longitude: found_location.longitude,
-							observation_time: point.observation_time.into(),
-							vehicle_class: measurement.vehicle_class,
-							traffic_intensity: measurement.traffic_intensity,
-							vehicle_speed_arithmetic: measurement.vehicle_speed_arithmetic,
-							vehicle_speed_harmonic: measurement.vehicle_speed_harmonic,
-							occupancy_rate: point.calculated_data.occupancy_rate,
-							availability_rate: point.calculated_data.availability_rate,
-							instability: point.calculated_data.instability
-						}
-					})
-					.collect::<Vec<TrafficMeasurement>>()
-			}
+			Location::insert(&value, location_to_insert)
+				.await.unwrap();
+		}
 		})
-		.flatten()
-		.collect::<Vec<TrafficMeasurement>>();
+		.await;
 
-	dbg!(&measurements.len());
+	futures::stream::iter(traffic_data.measuring_points)
+		.for_each_concurrent(100, |point| {
+		let value = pool.clone();
+		async move {
+			futures::stream::iter(point.measurement_data)
+				.for_each(|vehicle_data| {
+					let value = value.clone();
+					async move {
+						let measurement = TrafficVehicleMeasurement {
+							observation_time: point.observation_time.into(),
+							location_id: point.unique_id,
+							vehicle_class: vehicle_data.vehicle_class,
+							traffic_intensity: vehicle_data.traffic_intensity,
+							vehicle_speed_arithmetic: vehicle_data.vehicle_speed_arithmetic,
+							vehicle_speed_harmonic: vehicle_data.vehicle_speed_harmonic,
+						};
 
-	futures::stream::iter(measurements)
-		.for_each_concurrent(100, |c| async {
-			TrafficMeasurement::insert(&pool, c)
+						TrafficVehicleMeasurement::insert(&value, measurement)
+							.await.unwrap();
+					}
+				})
+				.await;
+
+			let measurement = TrafficMeasurement {
+				location_id: point.unique_id,
+				observation_time: point.observation_time.into(),
+				occupancy_rate: point.calculated_data.occupancy_rate,
+				availability_rate: point.calculated_data.availability_rate,
+				instability: point.calculated_data.instability
+			};
+
+			TrafficMeasurement::insert(&value, measurement)
 				.await.unwrap()
+		}
 		})
 		.await;
 

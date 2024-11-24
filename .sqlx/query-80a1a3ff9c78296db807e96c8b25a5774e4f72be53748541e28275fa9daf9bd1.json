@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\t\t\tINSERT INTO public.traffic_measurements (\n\t\t\t\t\tlocation_id,\n\t\t\t\t\tobservation_time,\n\t\t\t\t\toccupancy_rate,\n\t\t\t\t\tavailability_rate,\n\t\t\t\t\tinstability\n\t\t\t\t)\n\t\t\t\tVALUES ($1, $2, $3, $4, $5)\n\t\t\t\tON CONFLICT (location_id, observation_time)\n\t\t\t\tDO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Timestamptz",
+        "Float8",
+        "Float8",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "80a1a3ff9c78296db807e96c8b25a5774e4f72be53748541e28275fa9daf9bd1"
+}

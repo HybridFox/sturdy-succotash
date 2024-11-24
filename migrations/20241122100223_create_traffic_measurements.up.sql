@@ -10,18 +10,36 @@ CREATE TYPE vehicle_class AS ENUM (
     'UNKNOWN'
 );
 
--- Create the measurements table which will become a hypertable
-CREATE TABLE traffic_measurements (
-    location_id INTEGER NOT NULL,
-
-    -- Location data
+-- Create table for locations
+CREATE TABLE locations (
+    location_id INTEGER PRIMARY KEY,
     latitude DOUBLE PRECISION NOT NULL,
-    longitude DOUBLE PRECISION NOT NULL,
-    
-    -- Timestamps
+    longitude DOUBLE PRECISION NOT NULL
+);
+
+-- Create table for measuring point metadata and calculations
+CREATE TABLE traffic_measurements (
+    -- Primary key and foreign key fields
+    location_id INTEGER NOT NULL,
     observation_time TIMESTAMPTZ NOT NULL,
     
-    -- Classification
+    -- Calculated data (shared across vehicle classes)
+    occupancy_rate DOUBLE PRECISION NOT NULL,
+    availability_rate DOUBLE PRECISION NOT NULL,
+    instability DOUBLE PRECISION NOT NULL,
+    
+    PRIMARY KEY (location_id, observation_time),
+    FOREIGN KEY (location_id) REFERENCES locations (location_id)
+);
+
+-- Create hypertable for measuring point data
+SELECT create_hypertable('traffic_measurements', 'observation_time');
+
+-- Create table for vehicle class specific measurements
+CREATE TABLE traffic_vehicle_measurements (
+    -- Primary key and foreign key fields
+    location_id INTEGER NOT NULL,
+    observation_time TIMESTAMPTZ NOT NULL,
     vehicle_class vehicle_class NOT NULL,
     
     -- Measurements
@@ -29,60 +47,34 @@ CREATE TABLE traffic_measurements (
     vehicle_speed_arithmetic INTEGER NOT NULL,
     vehicle_speed_harmonic INTEGER NOT NULL,
     
-    -- Calculated data
-    occupancy_rate DOUBLE PRECISION NOT NULL,
-    availability_rate DOUBLE PRECISION NOT NULL,
-    instability DOUBLE PRECISION NOT NULL
+    PRIMARY KEY (location_id, observation_time, vehicle_class)
 );
 
--- Create the hypertable using observation_time
-SELECT create_hypertable('traffic_measurements', 'observation_time');
+-- Create hypertable for vehicle measurements
+SELECT create_hypertable('traffic_vehicle_measurements', 'observation_time');
+
+-- Create indexes for common queries
+CREATE INDEX idx_traffic_measurements_location 
+    ON traffic_measurements (location_id, observation_time);
+    
+CREATE INDEX idx_traffic_vehicle_measurements_lookup 
+    ON traffic_vehicle_measurements (location_id, observation_time, vehicle_class);
+
+-- If you're using PostGIS, you might want to add:
+ALTER TABLE locations ADD COLUMN geom geometry(Point, 4326);
+CREATE INDEX idx_locations_geom ON locations USING GIST (geom);
 
 -- Create indices for common queries
-CREATE INDEX idx_traffic_measurements_location 
-    ON traffic_measurements USING GIST (
+CREATE INDEX idx_locations_location 
+    ON locations USING GIST (
         ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
     );
 
-CREATE INDEX idx_traffic_measurements_metadata 
-    ON traffic_measurements(location_id, observation_time DESC);
-
-CREATE INDEX idx_traffic_measurements_vehicle_class 
-    ON traffic_measurements(vehicle_class, observation_time DESC);
-
 CREATE UNIQUE INDEX uniq_idx_traffic_measurements_id_time_class
-	ON traffic_measurements(location_id, observation_time, vehicle_class);
+	ON traffic_measurements(location_id, observation_time);
 
--- Add compression policy
-ALTER TABLE traffic_measurements SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'location_id,vehicle_class'
-);
+CREATE UNIQUE INDEX uniq_idx_locations
+	ON locations(location_id);
 
--- Create a continuous aggregate view for hourly statistics
--- CREATE MATERIALIZED VIEW traffic_measurements_hourly
---     WITH (timescaledb.continuous) AS
--- SELECT
---     time_bucket('1 hour', observation_time) AS bucket,
---     descriptive_id,
---     unique_id,
---     vehicle_class,
---     AVG(latitude) as latitude,
---     AVG(longitude) as longitude,
---     AVG(traffic_intensity) AS avg_intensity,
---     AVG(vehicle_speed_arithmetic) AS avg_speed_arithmetic,
---     AVG(vehicle_speed_harmonic) AS avg_speed_harmonic,
---     AVG(occupancy_rate) AS avg_occupancy,
---     AVG(availability_rate) AS avg_availability,
---     COUNT(*) AS measurement_count
--- FROM traffic_measurements
--- GROUP BY bucket, descriptive_id, unique_id, vehicle_class;
-
--- -- Add refresh policy for the continuous aggregate
--- SELECT add_continuous_aggregate_policy('traffic_measurements_hourly',
---     start_offset => INTERVAL '3 days',
---     end_offset => INTERVAL '1 hour',
---     schedule_interval => INTERVAL '1 hour');
-
--- Add compression policy after 7 days
-SELECT add_compression_policy('traffic_measurements', INTERVAL '7 days');
+CREATE UNIQUE INDEX uniq_idx_traffic_vehicle_measurements
+	ON traffic_vehicle_measurements(location_id, observation_time, vehicle_class);
