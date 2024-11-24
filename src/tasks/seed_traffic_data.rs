@@ -27,7 +27,7 @@ pub async fn seed_traffic_data() -> std::result::Result<(), AppError> {
     let location_data: TrafficDataLocations = from_str(&location_data_xml)?;
 
 	futures::stream::iter(location_data.locations)
-		.for_each(|location| {
+		.for_each_concurrent(100, |location| {
 		let value = pool.clone();
 		async move {
 			let location_to_insert = Location {
@@ -47,7 +47,7 @@ pub async fn seed_traffic_data() -> std::result::Result<(), AppError> {
 		let value = pool.clone();
 		async move {
 			futures::stream::iter(point.measurement_data)
-				.for_each(|vehicle_data| {
+				.for_each_concurrent(100, |vehicle_data| {
 					let value = value.clone();
 					async move {
 						let measurement = TrafficVehicleMeasurement {
