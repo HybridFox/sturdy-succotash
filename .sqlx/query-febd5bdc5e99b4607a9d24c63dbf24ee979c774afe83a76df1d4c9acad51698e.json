@@ -1,0 +1,99 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n\t\t\t\tlocation_id,\n\t\t\t\tlatitude,\n\t\t\t\tlongitude,\n\t\t\t\tobservation_time,\n\t\t\t\ttraffic_intensity,\n\t\t\t\tvehicle_speed_arithmetic,\n\t\t\t\tvehicle_speed_harmonic,\n\t\t\t\toccupancy_rate,\n\t\t\t\tavailability_rate,\n\t\t\t\tinstability,\n\t\t\t\tvehicle_class AS \"vehicle_class!: VehicleClass\"\n            FROM public.traffic_measurements\n            WHERE ST_DWithin(\n                ST_SetSRID(ST_MakePoint(longitude, latitude), 4326),\n                ST_SetSRID(ST_MakePoint($1, $2), 4326),\n                $3\n            )\n            ORDER BY observation_time DESC\n            LIMIT $4\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "location_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "latitude",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
+        "name": "longitude",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 3,
+        "name": "observation_time",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "traffic_intensity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "vehicle_speed_arithmetic",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "vehicle_speed_harmonic",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "occupancy_rate",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 8,
+        "name": "availability_rate",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 9,
+        "name": "instability",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 10,
+        "name": "vehicle_class!: VehicleClass",
+        "type_info": {
+          "Custom": {
+            "name": "vehicle_class",
+            "kind": {
+              "Enum": [
+                "MOTOR_BIKES",
+                "CARS",
+                "VANS",
+                "RIGID_TRUCKS",
+                "ARTICULATED_TRUCKS",
+                "UNKNOWN"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Float8",
+        "Float8",
+        "Float8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "febd5bdc5e99b4607a9d24c63dbf24ee979c774afe83a76df1d4c9acad51698e"
+}

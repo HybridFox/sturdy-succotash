@@ -1,0 +1,16 @@
+[package]
+name = "verkeers-data"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sqlx = { version = "0.8", features = [ "runtime-tokio", "tls-native-tls", "postgres", "chrono", "bigdecimal" ] }
+actix-web = { version = "4" }
+thiserror = { version = "2.0.3" }
+quick-xml = { version = "0.37.1", features = ["serialize"] }
+reqwest = { version = "0.12.9" }
+serde = { version = "1.0.215", features = ["derive"] }
+chrono = { version = "0.4.38", features = ["serde"] }
+dotenv = { version = "0.15.0" }
+futures = { version = "0.3.31" }
+tokio-cron-scheduler = { version = "0.13.0" }

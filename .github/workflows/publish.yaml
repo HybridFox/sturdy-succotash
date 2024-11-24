@@ -1,0 +1,21 @@
+name: deploy
+on:
+    push:
+        tags:
+            - v*
+
+jobs:
+    push_api_to_registry:
+        name: build api
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check out the repo
+              uses: actions/checkout@v3
+            - name: Deploy
+              uses: "./.github/templates/deploy"
+              with:
+                  dockerUsername: ${{ secrets.DOCKER_USERNAME }}
+                  dockerPassword: ${{ secrets.DOCKER_PASSWORD }}
+                  imageName: hybridfox/verkeers-data-api
+                  context: .
+                  file: ./Dockerfile

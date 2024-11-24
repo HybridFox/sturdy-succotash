@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\t\t\tINSERT INTO public.traffic_measurements (\n\t\t\t\t\tlocation_id,\n\t\t\t\t\tlatitude,\n\t\t\t\t\tlongitude,\n\t\t\t\t\tobservation_time,\n\t\t\t\t\tvehicle_class,\n\t\t\t\t\ttraffic_intensity,\n\t\t\t\t\tvehicle_speed_arithmetic,\n\t\t\t\t\tvehicle_speed_harmonic,\n\t\t\t\t\toccupancy_rate,\n\t\t\t\t\tavailability_rate,\n\t\t\t\t\tinstability\n\t\t\t\t)\n\t\t\t\tVALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n\t\t\t\tON CONFLICT (location_id, observation_time, vehicle_class)\n\t\t\t\tDO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Float8",
+        "Float8",
+        "Timestamptz",
+        {
+          "Custom": {
+            "name": "vehicle_class",
+            "kind": {
+              "Enum": [
+                "MOTOR_BIKES",
+                "CARS",
+                "VANS",
+                "RIGID_TRUCKS",
+                "ARTICULATED_TRUCKS",
+                "UNKNOWN"
+              ]
+            }
+          }
+        },
+        "Int4",
+        "Int4",
+        "Int4",
+        "Float8",
+        "Float8",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "11fdbd1ac53e2be34c204b14fceec8a891979935cc18c4d5c3b03779a561abdd"
+}
