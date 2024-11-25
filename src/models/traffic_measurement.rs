@@ -14,6 +14,18 @@ pub enum VehicleClass {
     ArticulatedTrucks,
     Unknown,
 }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FindMeasurementsParams {
+	pub lat: Option<f64>,
+	pub lon: Option<f64>,
+	pub radius: f64,
+	pub limit: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FindMeasurementsByLocationIdParams {
+	pub limit: i64,
+}
 
 impl From<i32> for VehicleClass {
     fn from(value: i32) -> Self {
@@ -144,13 +156,11 @@ impl TrafficMeasurement {
 		Ok(())
 	}
 
-    pub async fn get_recent_by_location(
+    pub async fn get_recent(
         pool: &sqlx::PgPool,
-        lat: f64,
-        lon: f64,
-        radius: f64,
-        limit: i64,
-    ) -> Result<Vec<MeasurementDTO>, sqlx::Error> {
+        params: FindMeasurementsParams
+	) -> Result<Vec<MeasurementDTO>, sqlx::Error> {
+		dbg!(&params);
         sqlx::query_as!(
             MeasurementDTO,
             r#"
@@ -174,7 +184,37 @@ impl TrafficMeasurement {
             ORDER BY observation_time DESC
             LIMIT $4
             "#,
-            lon, lat, radius, limit
+            params.lon, params.lat, params.radius, params.limit
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn get_by_location_id(
+        pool: &sqlx::PgPool,
+		location_id: String,
+        params: FindMeasurementsByLocationIdParams
+	) -> Result<Vec<MeasurementDTO>, sqlx::Error> {
+        sqlx::query_as!(
+            MeasurementDTO,
+            r#"
+            SELECT
+				t.location_id,
+				t.observation_time,
+				t.occupancy_rate,
+				t.availability_rate,
+				t.total_vehicles_passed,
+				t.average_speed,
+				t.max_speed,
+				l.latitude,
+				l.longitude
+            FROM public.traffic_measurements t
+			LEFT JOIN public.locations l ON t.location_id = l.location_id
+            WHERE l.location_id = $1
+            ORDER BY observation_time DESC
+            LIMIT $2
+            "#,
+            location_id.parse().unwrap_or(0), params.limit
         )
         .fetch_all(pool)
         .await

@@ -10,7 +10,7 @@ use actix_web::{get, web, App, HttpResponse, HttpServer, Result};
 use chrono::{DateTime, FixedOffset};
 use dotenv::dotenv;
 use errors::AppError;
-use models::traffic_measurement::{TrafficMeasurement, VehicleClass};
+use models::traffic_measurement::{FindMeasurementsByLocationIdParams, FindMeasurementsParams, TrafficMeasurement, VehicleClass};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
 use state::AppState;
@@ -19,13 +19,13 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 
 #[derive(Deserialize)]
 pub struct FindAllQueryParams {
-	lat: f64,
-	lon: f64,
+	lat: Option<f64>,
+	lon: Option<f64>,
 	radius: Option<f64>,
 	limit: Option<i64>
 }
 
-#[get("/find")]
+#[get("/measurements")]
 pub async fn find_all(
 	state: web::Data<AppState>,
 	query: web::Query<FindAllQueryParams>,
@@ -35,7 +35,33 @@ pub async fn find_all(
 	let radius = query.radius.unwrap_or(1000.0);
 	let limit = query.limit.unwrap_or(20);
 
-	let measurements = TrafficMeasurement::get_recent_by_location(&state.pool, lat, lon, radius, limit)
+	let measurements = TrafficMeasurement::get_recent(&state.pool, FindMeasurementsParams {
+		lat,
+		lon,
+		limit,
+		radius
+	})
+		.await?;
+
+	Ok(HttpResponse::Ok().json(measurements))
+}
+
+#[derive(Deserialize, Debug)]
+pub struct FindByLocationIdPathParams {
+	pub location_id: String,
+}
+
+#[get("/locations/{location_id}/measurements")]
+pub async fn find_by_location_id(
+	state: web::Data<AppState>,
+	query: web::Query<FindAllQueryParams>,
+	params: web::Path<FindByLocationIdPathParams>,
+) -> Result<HttpResponse, AppError> {
+	let limit = query.limit.unwrap_or(20);
+
+	let measurements = TrafficMeasurement::get_by_location_id(&state.pool, params.location_id.clone(), FindMeasurementsByLocationIdParams {
+		limit
+	})
 		.await?;
 
 	Ok(HttpResponse::Ok().json(measurements))
@@ -232,6 +258,7 @@ async fn main() -> std::result::Result<(), AppError> {
 
     let _ = HttpServer::new(move || App::new()
 		.service(find_all)
+		.service(find_by_location_id)
 		.app_data(actix_web::web::Data::new(state.clone()))
 	)
         .bind(("0.0.0.0", 8080))?
