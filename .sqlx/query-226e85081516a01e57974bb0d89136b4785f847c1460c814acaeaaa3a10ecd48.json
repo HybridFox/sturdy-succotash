@@ -1,0 +1,73 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n\t\t\t\tt.location_id,\n\t\t\t\tt.observation_time,\n\t\t\t\tt.occupancy_rate,\n\t\t\t\tt.availability_rate,\n\t\t\t\tt.total_vehicles_passed,\n\t\t\t\tt.average_speed,\n\t\t\t\tt.max_speed,\n\t\t\t\tl.latitude,\n\t\t\t\tl.longitude\n            FROM public.traffic_measurements t\n\t\t\tLEFT JOIN public.locations l ON t.location_id = l.location_id\n            WHERE ST_DWithin(\n                ST_SetSRID(ST_MakePoint(l.longitude, l.latitude), 4326),\n                ST_SetSRID(ST_MakePoint($1, $2), 4326),\n                $3\n            )\n            ORDER BY observation_time DESC\n            LIMIT $4\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "location_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "observation_time",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "occupancy_rate",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "availability_rate",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "total_vehicles_passed",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "average_speed",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "max_speed",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "latitude",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 8,
+        "name": "longitude",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Float8",
+        "Float8",
+        "Float8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "226e85081516a01e57974bb0d89136b4785f847c1460c814acaeaaa3a10ecd48"
+}
