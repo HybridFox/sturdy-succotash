@@ -26,7 +26,7 @@ impl From<i32> for VehicleClass {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TrafficVehicleMeasurement {
     pub location_id: i32,
     pub observation_time: DateTime<Utc>,
@@ -69,4 +69,69 @@ impl TrafficVehicleMeasurement {
 
         Ok(())
     }
+
+	pub async fn batch_insert(
+		pool: &sqlx::PgPool,
+		measurements: Vec<TrafficVehicleMeasurement>,
+	) -> Result<(), sqlx::Error> {
+		// Split measurements into batches
+		let batches: Vec<Vec<TrafficVehicleMeasurement>> = measurements
+			.chunks(1000)
+			.map(|chunk| chunk.to_vec())
+			.collect();
+    
+    	// Process each batch
+		for batch in batches {
+			let mut query_builder = String::from(
+				"INSERT INTO public.traffic_vehicle_measurements (
+					location_id,
+					observation_time,
+					vehicle_class,
+					traffic_intensity,
+					vehicle_speed_arithmetic,
+					vehicle_speed_harmonic
+				) VALUES "
+			);
+
+			// Build the values part of the query and collect params
+			let values: Vec<String> = batch
+				.iter()
+				.enumerate()
+				.map(|(i, _)| {
+					let offset = i * 6;
+					format!(
+						"(${},${},${},${},${},${})",
+						offset + 1,
+						offset + 2,
+						offset + 3,
+						offset + 4,
+						offset + 5,
+						offset + 6
+					)
+				})
+				.collect();
+
+			query_builder.push_str(&values.join(","));
+			query_builder.push_str(" ON CONFLICT (location_id, observation_time, vehicle_class) DO NOTHING");
+
+			// Build the query
+			let mut query = sqlx::query(&query_builder);
+
+			// Add parameters for each measurement
+			for measurement in batch {
+				query = query
+					.bind(measurement.location_id)
+					.bind(measurement.observation_time)
+					.bind(measurement.vehicle_class as VehicleClass)
+					.bind(measurement.traffic_intensity)
+					.bind(measurement.vehicle_speed_arithmetic)
+					.bind(measurement.vehicle_speed_harmonic);
+			}
+
+			// Execute the batch insert
+			query.execute(pool).await?;
+		}
+
+		Ok(())
+	}
 }
