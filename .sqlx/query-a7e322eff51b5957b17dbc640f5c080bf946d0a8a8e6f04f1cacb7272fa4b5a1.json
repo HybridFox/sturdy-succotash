@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n\t\t\t\tt.location_id,\n\t\t\t\tt.observation_time,\n\t\t\t\tt.occupancy_rate,\n\t\t\t\tt.availability_rate,\n\t\t\t\tt.total_vehicles_passed,\n\t\t\t\tt.average_speed,\n\t\t\t\tt.max_speed,\n\t\t\t\tl.latitude,\n\t\t\t\tl.longitude\n            FROM public.traffic_measurements t\n\t\t\tLEFT JOIN public.locations l ON t.location_id = l.location_id\n            WHERE l.location_id = $1\n            ORDER BY observation_time DESC\n            LIMIT $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "location_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "observation_time",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "occupancy_rate",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "availability_rate",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "total_vehicles_passed",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "average_speed",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "max_speed",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "latitude",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 8,
+        "name": "longitude",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "a7e322eff51b5957b17dbc640f5c080bf946d0a8a8e6f04f1cacb7272fa4b5a1"
+}
