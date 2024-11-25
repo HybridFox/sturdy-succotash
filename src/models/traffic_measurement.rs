@@ -1,15 +1,45 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::dto::measurement::MeasurementDTO;
+
+#[derive(sqlx::Type, Debug, Clone, PartialEq, Serialize, Deserialize, Copy)]
+#[sqlx(type_name = "vehicle_class", rename_all = "SCREAMING_SNAKE_CASE")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum VehicleClass {
+    MotorBikes,
+    Cars,
+    Vans,
+    RigidTrucks,
+    ArticulatedTrucks,
+    Unknown,
+}
+
+impl From<i32> for VehicleClass {
+    fn from(value: i32) -> Self {
+        match value {
+            1 => VehicleClass::MotorBikes,
+            2 => VehicleClass::Cars,
+            3 => VehicleClass::Vans,
+            4 => VehicleClass::RigidTrucks,
+            5 => VehicleClass::ArticulatedTrucks,
+            _ => VehicleClass::Unknown,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TrafficMeasurement {
     pub location_id: i32,
     pub observation_time: DateTime<Utc>,
 
     // Calculated data
-    pub occupancy_rate: f64,
-    pub availability_rate: f64,
-    pub instability: f64,
+    pub occupancy_rate: i32,
+    pub availability_rate: i32,
+	
+	pub total_vehicles_passed: i32,
+	pub average_speed: Option<i32>,
+	pub max_speed: Option<i32>,
 }
 
 impl TrafficMeasurement {
@@ -24,9 +54,11 @@ impl TrafficMeasurement {
 					observation_time,
 					occupancy_rate,
 					availability_rate,
-					instability
+					total_vehicles_passed,
+					average_speed,
+					max_speed
 				)
-				VALUES ($1, $2, $3, $4, $5)
+				VALUES ($1, $2, $3, $4, $5, $6, $7)
 				ON CONFLICT (location_id, observation_time)
 				DO NOTHING
             "#,
@@ -34,7 +66,9 @@ impl TrafficMeasurement {
             measurement.observation_time,
             measurement.occupancy_rate,
             measurement.availability_rate,
-            measurement.instability,
+			measurement.total_vehicles_passed,
+			measurement.average_speed,
+			measurement.max_speed
         )
         .execute(pool)
         .await?;
@@ -60,7 +94,9 @@ impl TrafficMeasurement {
 					observation_time,
 					occupancy_rate,
 					availability_rate,
-					instability
+					total_vehicles_passed,
+					average_speed,
+					max_speed
 				) VALUES "
 			);
 
@@ -69,14 +105,16 @@ impl TrafficMeasurement {
 				.iter()
 				.enumerate()
 				.map(|(i, _)| {
-					let offset = i * 5;
+					let offset = i * 7;
 					format!(
-						"(${},${},${},${},${})",
+						"(${},${},${},${},${},${},${})",
 						offset + 1,
 						offset + 2,
 						offset + 3,
 						offset + 4,
-						offset + 5
+						offset + 5,
+						offset + 6,
+						offset + 7
 					)
 				})
 				.collect();
@@ -94,7 +132,9 @@ impl TrafficMeasurement {
 					.bind(measurement.observation_time)
 					.bind(measurement.occupancy_rate)
 					.bind(measurement.availability_rate)
-					.bind(measurement.instability);
+					.bind(measurement.total_vehicles_passed)
+					.bind(measurement.average_speed)
+					.bind(measurement.max_speed);
 			}
 
 			// Execute the batch insert
@@ -110,16 +150,20 @@ impl TrafficMeasurement {
         lon: f64,
         radius: f64,
         limit: i64,
-    ) -> Result<Vec<TrafficMeasurement>, sqlx::Error> {
+    ) -> Result<Vec<MeasurementDTO>, sqlx::Error> {
         sqlx::query_as!(
-            TrafficMeasurement,
+            MeasurementDTO,
             r#"
             SELECT
 				t.location_id,
 				t.observation_time,
 				t.occupancy_rate,
 				t.availability_rate,
-				t.instability
+				t.total_vehicles_passed,
+				t.average_speed,
+				t.max_speed,
+				l.latitude,
+				l.longitude
             FROM public.traffic_measurements t
 			LEFT JOIN public.locations l ON t.location_id = l.location_id
             WHERE ST_DWithin(

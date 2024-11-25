@@ -2,6 +2,7 @@ pub mod errors;
 pub mod tasks;
 pub mod models;
 pub mod state;
+pub mod dto;
 
 use std::env;
 
@@ -9,7 +10,7 @@ use actix_web::{get, web, App, HttpResponse, HttpServer, Result};
 use chrono::{DateTime, FixedOffset};
 use dotenv::dotenv;
 use errors::AppError;
-use models::{traffic_measurement::TrafficMeasurement, traffic_vehicle_measurement::VehicleClass};
+use models::traffic_measurement::{TrafficMeasurement, VehicleClass};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
 use state::AppState;
@@ -158,15 +159,15 @@ pub struct MeasurementData {
 pub struct CalculatedData {
     // bezettingsgraad -> occupancy_rate
     #[serde(rename = "bezettingsgraad")]
-    pub occupancy_rate: f64,
+    pub occupancy_rate: i32,
 
     // beschikbaarheidsgraad -> availability_rate
     #[serde(rename = "beschikbaarheidsgraad")]
-    pub availability_rate: f64,
+    pub availability_rate: i32,
 
     // onrustigheid -> instability
     #[serde(rename = "onrustigheid")]
-    pub instability: f64,
+    pub instability: i32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -201,7 +202,7 @@ async fn main() -> std::result::Result<(), AppError> {
 
     // Add basic cron job
     scheduler.add(
-		Job::new_async("0 * * * * *", |uuid, l| {
+		Job::new_async("0 * * * * *", |_uuid, _l| {
 			println!("yolo");
             Box::pin(async move {
 				seed_traffic_data()
